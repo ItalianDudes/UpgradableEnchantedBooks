@@ -4,7 +4,10 @@ import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.event.AnvilUpdateEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
@@ -14,6 +17,7 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -25,7 +29,7 @@ public final class UpgradableEnchantedBooks {
     // Mod Info
     public static final String MODID = "ueb";
     public static final String NAME = "UpgradableEnchantedBooks";
-    public static final String VERSION = "1.0R";
+    public static final String VERSION = "1.1R";
 
     // Logger & Instance
     public static Logger LOGGER = LogManager.getLogger();
@@ -45,12 +49,11 @@ public final class UpgradableEnchantedBooks {
         if (event.isCanceled()) event.setCanceled(false);
         ItemStack left = event.getLeft();
         ItemStack right = event.getRight();
-
         boolean rightQuarkTome = Objects.requireNonNull(right.getItem().getRegistryName()).toString().equals("quark:ancient_tome");
 
         if (left.getItem() == Items.ENCHANTED_BOOK && (right.getItem() == Items.ENCHANTED_BOOK || rightQuarkTome)) {
-            Map<Enchantment, Integer> leftEnchants = EnchantmentHelper.getEnchantments(left);
-            Map<Enchantment, Integer> rightEnchants = EnchantmentHelper.getEnchantments(right);
+            Map<Enchantment, Integer> leftEnchants = getEnchantmentsNBT(left);
+            Map<Enchantment, Integer> rightEnchants = getEnchantmentsNBT(right);
 
             if (rightQuarkTome) { // Right == ANCIENT_TOME
                 Optional<Enchantment> tomeEnchantment = rightEnchants.keySet().stream().findFirst();
@@ -64,6 +67,7 @@ public final class UpgradableEnchantedBooks {
                         for (Enchantment copy : leftEnchants.keySet()) {
                             upgraded.put(copy, leftEnchants.get(copy));
                         }
+
                         upgraded.replace(enchantment, level+1);
                         ItemStack output = new ItemStack(Items.ENCHANTED_BOOK);
                         EnchantmentHelper.setEnchantments(upgraded, output);
@@ -107,5 +111,23 @@ public final class UpgradableEnchantedBooks {
                 }
             }
         }
+    }
+
+    public static Map<Enchantment, Integer> getEnchantmentsNBT(@Nonnull ItemStack stack) { // JEID Compatible
+        Map<Enchantment, Integer> enchantments = new HashMap<>();
+        if (stack.hasTagCompound() && stack.getTagCompound() != null && stack.getTagCompound().hasKey("StoredEnchantments")) {
+            NBTTagList list = stack.getTagCompound().getTagList("StoredEnchantments", Constants.NBT.TAG_COMPOUND);
+            for (int i = 0; i < list.tagCount(); i++) {
+                NBTTagCompound enchantTag = list.getCompoundTagAt(i);
+                int id = enchantTag.getShort("id");
+                int lvl = enchantTag.getShort("lvl");
+
+                Enchantment enchantment = Enchantment.getEnchantmentByID(id);
+                if (enchantment != null) {
+                    enchantments.put(enchantment, lvl);
+                }
+            }
+        }
+        return enchantments;
     }
 }
