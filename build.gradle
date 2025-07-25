@@ -1,0 +1,91 @@
+// SERIOUSLY THANKS TO QUAT1024 FOR PROVIDING A MODERN WORKING FORGE 1.12 TEMPLATE
+// https://github.com/quat1024/modern-forge-1.12-template
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url = "https://maven.minecraftforge.net/" }
+    }
+
+    dependencies {
+        classpath group: "net.minecraftforge.gradle", name: "ForgeGradle", version: "5.1.+"
+    }
+}
+
+// Plugins
+apply plugin: "net.minecraftforge.gradle"
+apply plugin: 'idea'
+
+// Versioning
+def versionNumber = '1.0'
+def versionType = 'RELEASE' // RELEASE | BETA | ALPHA | DEV
+def versionMarker = versionType.charAt(0)
+group = 'it.italiandudes.ueb'
+version = versionNumber+versionMarker
+archivesBaseName = 'UpgradableEnchantedBooks'
+
+// Code Version
+java.toolchain.languageVersion = JavaLanguageVersion.of(8)
+compileJava {
+    sourceCompatibility = "8"
+    targetCompatibility = "8"
+}
+
+// Repositories
+repositories {
+    maven {
+        url = "https://maven.minecraftforge.net/"
+    }
+}
+
+// Dependencies
+dependencies {
+    //noinspection VulnerableLibrariesLocal
+    minecraft "net.minecraftforge:forge:1.12.2-14.23.5.2860"
+    implementation ("net.minecraftforge:mergetool:0.2.3.3") { force = true }
+}
+
+// Minecraft
+minecraft {
+    mappings channel: "stable", version: "39-1.12"
+
+    runs {
+        "client" {
+            workingDirectory file("./run")
+            mods { "${project.name}" { source sourceSets.main } }
+        }
+
+        "server" {
+            workingDirectory file("./run/server")
+            mods { "${project.name}" { source sourceSets.main } }
+        }
+    }
+}
+
+// Jar Properties
+jar {
+    manifest {
+        attributes "Specification-Title": "UpgradableEnchantedBooks"
+        attributes "Specification-Vendor": "ItalianDudes"
+        attributes "Specification-Version": "1" // We are version 1 of ourselves
+        attributes "Implementation-Title": project.name
+        attributes "Implementation-Version": project.version
+        attributes "Implementation-Vendor" :"ItalianDudes"
+        attributes "Implementation-Timestamp": new Date().format("dd/MM/yyyy HH:mm:ss.sss")
+    }
+}
+
+// Obfuscate Jar after finishing jar task
+jar.finalizedBy('reobfJar')
+
+// Resource fixing
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("mcmod.info") {
+        expand "version": project.version
+    }
+}
+
+//When Forge 1.12 loads mods from a directory that's been put on the classpath, it expects to find resources in the same directory.
+//Default Gradle behavior puts resources in ./build/resources/main instead of ./build/classes/main/java. Let's change that.
+sourceSets.configureEach { it.output.resourcesDir = it.output.classesDirs.getFiles().iterator().next() }
